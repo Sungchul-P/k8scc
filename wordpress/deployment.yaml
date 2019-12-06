@@ -10,8 +10,6 @@ spec:
   selector:
     matchLabels:
       app: wordpress
-  strategy:
-    type: Recreate
   template:
     metadata:
       labels:
@@ -25,8 +23,10 @@ spec:
           name: wordpress
         volumeMounts:
         - mountPath: /var/www/html
-          name: my-vol                    
+          name: my-vol                   
         env:
+          - name: WORDPRESS_DB_NAME
+            value: wpdb
           - name: WORDPRESS_DB_PASSWORD
             valueFrom:
               secretKeyRef:
@@ -39,4 +39,4 @@ spec:
       volumes:
         - name: my-vol
           hostPath:
-            path: "/mnt/data/web"           
+            path: "/mnt/data/web" 

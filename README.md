@@ -31,7 +31,7 @@ You can manage **_Go_** verions with **_[gvm]_**
 
 Refer to _**[KIND](https://github.com/kubernetes-sigs/kind)**_ for more details
 
-    GO111MODULE="on" go get sigs.k8s.io/kind@v0.5.1
+    GO111MODULE="on" go get sigs.k8s.io/kind@v0.6.1
 
     export PATH="$PATH:$(go env GOPATH)/bin"
 
@@ -163,6 +163,51 @@ Test with your own DNS:
     docker rm -f kind-proxy-80
 
 
+## Helm
+
+    # Install Helm (Ubuntu)
+    wget https://get.helm.sh/helm-v3.0.1-linux-amd64.tar.gz
+    tar -zxvf helm-v3.0.1-linux-amd64.tar.gz
+    sudo mv linux-amd64/helm /usr/local/bin/helm
+
+### Kafka
+    # Install Kafka
+    kubectl create namespace kafka
+    helm repo add incubator http://storage.googleapis.com/kubernetes-charts-incubator
+    helm repo update
+    helm install -name kafka-kind --namespace kafka -f helm/kafka-values.yaml incubator/kafka
+
+    # Connect to kafka broker container
+    kubectl exec -n kafka -it kafka-kind-kafka-0 --container cp-kafka-broker bash
+
+    # Kafka commands
+    [topic list]
+    kubectl -n kafka exec testclient -- kafka-topics --zookeeper kafka-kind-zookeeper:2181 --list
+
+    [create topic]
+    kubectl -n kafka exec testclient -- kafka-topics --zookeeper kafka-kind-zookeeper:2181 --topic test1 --create --partitions 1 --replication-factor 1
+
+    [consumer]
+    kubectl -n kafka exec -ti testclient -- kafka-console-consumer --bootstrap-server kafka-kind:9092 --topic test1 --from-beginning
+
+    [producer]
+    kubectl -n kafka exec -ti testclient -- kafka-console-producer --broker-list kafka-kind-headless:9092 --topic test1
+
+### Monitoring
+    # Install prometheus + grafana
+    kubectl create namespace monitoring
+    helm repo add stable https://kubernetes-charts.storage.googleapis.com/
+    helm repo update
+    helm install -name prometheus-kind --namespace monitoring stable/prometheus
+    helm install -name grafana-kind --namespace monitoring stable/grafana
+
+    [Grafana Password]
+    kubectl get secret --namespace monitoring grafana-kind -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+
+    [Grafana PortForwarding]
+    export POD_NAME=$(kubectl get pods --namespace monitoring -l "app=grafana,release=grafana-kind" -o jsonpath="{.items[0].metadata.name}")
+    kubectl --namespace monitoring port-forward $POD_NAME 3000
+
 ## Extra
 
 ### Web UI(Dashboard)
@@ -188,7 +233,6 @@ To _disable_ session time-out:
     ### add following after arg:
     - args:
       - --token-ttl=0
-
 
 ### Autoscaler
 
